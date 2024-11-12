@@ -92,7 +92,7 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
             )
             self.log(entry)
         except Exception as ex:
-            print("Parsing excecption: %s" % ex)
+            print("Parsing exception: %s" % ex)
 
         # Forward the request to the DNS server only if match set conditions,
         # otherwise act as honeypot.
