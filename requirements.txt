@@ -1,2 +1,2 @@
 SQLAlchemy==1.4.54
-Twisted==23.10.0
+Twisted==23.8.0
