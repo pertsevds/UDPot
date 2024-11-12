@@ -136,7 +136,7 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
 parser = argparse.ArgumentParser()
 parser.add_argument("server", type=str, help="DNS server IP address")
 parser.add_argument(
-    "-p", "--dns-port", type=int, default=5053, help="DNS honeypot port"
+    "-p", "--dns-port", type=int, default=53, help="DNS honeypot port"
 )
 parser.add_argument(
     "-c", "--req-count", type=int, default=3, help="how many request to resolve"
