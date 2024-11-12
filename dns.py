@@ -79,7 +79,7 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
             entry["transport"] = "TCP"
             entry["src_ip"] = proto.transport.getPeer().host
             entry["src_port"] = proto.transport.getPeer().port
-        entry["dns_name"] = message.queries[0].name.name
+        entry["dns_name"] = message.queries[0].name.name.decode("utf-8")
         entry["dns_type"] = dns.QUERY_TYPES.get(
             message.queries[0].type,
             dns.EXT_QUERIES.get(
@@ -139,7 +139,7 @@ parser.add_argument(
     "-p", "--dns-port", type=int, default=53, help="DNS honeypot port"
 )
 parser.add_argument(
-    "-c", "--req-count", type=int, default=3, help="how many request to resolve"
+    "-c", "--req-count", type=int, default=30000, help="how many request to resolve"
 )
 parser.add_argument(
     "-t",
