@@ -71,25 +71,28 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
     def messageReceived(self, message, proto, address=None):
         # Log info.
         entry = {}
-        if address is not None:
-            entry["transport"] = "UDP"
-            entry["src_ip"] = address[0]
-            entry["src_port"] = address[1]
-        else:
-            entry["transport"] = "TCP"
-            entry["src_ip"] = proto.transport.getPeer().host
-            entry["src_port"] = proto.transport.getPeer().port
-        entry["dns_name"] = message.queries[0].name.name.decode("utf-8")
-        entry["dns_type"] = dns.QUERY_TYPES.get(
-            message.queries[0].type,
-            dns.EXT_QUERIES.get(
-                message.queries[0].type, "UNKNOWN (%d)" % message.queries[0].type
-            ),
-        )
-        entry["dns_cls"] = dns.QUERY_CLASSES.get(
-            message.queries[0].cls, "UNKNOWN (%d)" % message.queries[0].cls
-        )
-        self.log(entry)
+        try:
+            if address is not None:
+                entry["transport"] = "UDP"
+                entry["src_ip"] = address[0]
+                entry["src_port"] = address[1]
+            else:
+                entry["transport"] = "TCP"
+                entry["src_ip"] = proto.transport.getPeer().host
+                entry["src_port"] = proto.transport.getPeer().port
+            entry["dns_name"] = message.queries[0].name.name.decode("utf-8")
+            entry["dns_type"] = dns.QUERY_TYPES.get(
+                message.queries[0].type,
+                dns.EXT_QUERIES.get(
+                    message.queries[0].type, "UNKNOWN (%d)" % message.queries[0].type
+                ),
+            )
+            entry["dns_cls"] = dns.QUERY_CLASSES.get(
+                message.queries[0].cls, "UNKNOWN (%d)" % message.queries[0].cls
+            )
+            self.log(entry)
+        except Exception as ex:
+            print("Parsing excecption: %s" % ex)
 
         # Forward the request to the DNS server only if match set conditions,
         # otherwise act as honeypot.
