@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2014 Alessandro Tanasi (@jekil)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,32 +14,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
 import argparse
+import sys
 from datetime import datetime
 
 try:
-    from twisted.internet.protocol import Factory, Protocol
     from twisted.internet import reactor
-    from twisted.names import dns
-    from twisted.names import client, server
+    from twisted.internet.protocol import Factory, Protocol
+    from twisted.names import client, dns, server
 except ImportError as e:
-    print("Twisted requirement is missing, please install it with `pip install twisted`. Error: %s" % e)
+    print(
+        "Twisted requirement is missing, please install it with `pip install twisted`. Error: %s"
+        % e
+    )
     sys.exit()
 
 try:
-    from sqlalchemy import create_engine
+    from sqlalchemy import Column, DateTime, Integer, String, create_engine
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy import Column, Integer, String, DateTime
     from sqlalchemy.orm import Session
+
     Base = declarative_base()
 except ImportError as e:
-    print("SQLAlchemy requirement is missing, please install it with `pip install sqlalchemy`. Error: %s" % e)
+    print(
+        "SQLAlchemy requirement is missing, please install it with `pip install sqlalchemy`. Error: %s"
+        % e
+    )
     sys.exit()
 
 
 class Dns(Base):
     """Log table for DNS entries."""
+
     __tablename__ = "dns"
     id = Column(Integer, primary_key=True)
     transport = Column(String)
@@ -49,6 +55,7 @@ class Dns(Base):
     dns_type = Column(String)
     dns_cls = Column(String)
     created_at = Column(DateTime, default=datetime.now)
+
 
 class HoneyDNSServerFactory(server.DNSServerFactory):
     """DNS honeypot.
@@ -64,7 +71,7 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
     def messageReceived(self, message, proto, address=None):
         # Log info.
         entry = {}
-        if address != None:
+        if address is not None:
             entry["transport"] = "UDP"
             entry["src_ip"] = address[0]
             entry["src_port"] = address[1]
@@ -73,38 +80,81 @@ class HoneyDNSServerFactory(server.DNSServerFactory):
             entry["src_ip"] = proto.transport.getPeer().host
             entry["src_port"] = proto.transport.getPeer().port
         entry["dns_name"] = message.queries[0].name.name
-        entry["dns_type"] = dns.QUERY_TYPES.get(message.queries[0].type, dns.EXT_QUERIES.get(message.queries[0].type, "UNKNOWN (%d)" % message.queries[0].type))
-        entry["dns_cls"] = dns.QUERY_CLASSES.get(message.queries[0].cls, "UNKNOWN (%d)" % message.queries[0].cls)
+        entry["dns_type"] = dns.QUERY_TYPES.get(
+            message.queries[0].type,
+            dns.EXT_QUERIES.get(
+                message.queries[0].type, "UNKNOWN (%d)" % message.queries[0].type
+            ),
+        )
+        entry["dns_cls"] = dns.QUERY_CLASSES.get(
+            message.queries[0].cls, "UNKNOWN (%d)" % message.queries[0].cls
+        )
         self.log(entry)
 
         # Forward the request to the DNS server only if match set conditions,
         # otherwise act as honeypot.
-        if entry["src_ip"] in self.request_log and (datetime.now() - self.request_log[entry["src_ip"]]["last_seen"]).total_seconds() < self.opts.req_timeout:
+        if (
+            entry["src_ip"] in self.request_log
+            and (
+                datetime.now() - self.request_log[entry["src_ip"]]["last_seen"]
+            ).total_seconds()
+            < self.opts.req_timeout
+        ):
             if self.request_log[entry["src_ip"]]["count"] < self.opts.req_count:
                 self.request_log[entry["src_ip"]]["count"] += 1
                 self.request_log[entry["src_ip"]]["last_seen"] = datetime.now()
-                return server.DNSServerFactory.messageReceived(self, message, proto, address)
+                return server.DNSServerFactory.messageReceived(
+                    self, message, proto, address
+                )
             else:
                 self.request_log[entry["src_ip"]]["last_seen"] = datetime.now()
                 return
         else:
-            self.request_log[entry["src_ip"]] = {"count": 1, "last_seen": 0, "last_seen": datetime.now()}
-            return server.DNSServerFactory.messageReceived(self, message, proto, address)
+            self.request_log[entry["src_ip"]] = {
+                "count": 1,
+                "last_seen": datetime.now(),
+            }
+            return server.DNSServerFactory.messageReceived(
+                self, message, proto, address
+            )
 
     def log(self, data):
         if opts.verbose:
             print(data)
-        record = Dns(transport=data["transport"], src=data["src_ip"], src_port=data["src_port"], dns_name=data["dns_name"], dns_type=data["dns_type"], dns_cls=data["dns_cls"])
+        record = Dns(
+            transport=data["transport"],
+            src=data["src_ip"],
+            src_port=data["src_port"],
+            dns_name=data["dns_name"],
+            dns_type=data["dns_type"],
+            dns_cls=data["dns_cls"],
+        )
         session.add(record)
         session.commit()
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("server", type=str, help="DNS server IP address")
-parser.add_argument("-p", "--dns-port", type=int, default=5053, help="DNS honeypot port")
-parser.add_argument("-c", "--req-count", type=int, default=3, help="how many request to resolve")
-parser.add_argument("-t", "--req-timeout", type=int, default=86400, help="timeout to re-start resolving requests")
-parser.add_argument("-s", "--sql", type=str, default="sqlite:///db.sqlite3", help="database connection string")
+parser.add_argument(
+    "-p", "--dns-port", type=int, default=5053, help="DNS honeypot port"
+)
+parser.add_argument(
+    "-c", "--req-count", type=int, default=3, help="how many request to resolve"
+)
+parser.add_argument(
+    "-t",
+    "--req-timeout",
+    type=int,
+    default=86400,
+    help="timeout to re-start resolving requests",
+)
+parser.add_argument(
+    "-s",
+    "--sql",
+    type=str,
+    default="sqlite:///db.sqlite3",
+    help="database connection string",
+)
 parser.add_argument("-v", "--verbose", action="store_true", help="print each request")
 opts = parser.parse_args()
 
