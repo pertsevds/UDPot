@@ -139,7 +139,7 @@ parser.add_argument(
     "-p", "--dns-port", type=int, default=53, help="DNS honeypot port"
 )
 parser.add_argument(
-    "-c", "--req-count", type=int, default=30000, help="how many request to resolve"
+    "-c", "--req-count", type=int, default=3000000, help="how many request to resolve"
 )
 parser.add_argument(
     "-t",
